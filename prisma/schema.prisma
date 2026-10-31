@@ -1,0 +1,38 @@
+// Ini contoh konfigurasi untuk database PostgreSQL
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Ini contoh tabel untuk User
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  chats     Chat[]   // Relasi: 1 user punya banyak chat
+  createdAt DateTime @default(now())
+}
+
+// Ini contoh tabel untuk Chat (Obrolan)
+model Chat {
+  id        String    @id @default(uuid())
+  title     String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  messages  Message[] // Relasi: 1 chat punya banyak pesan
+  createdAt DateTime  @default(now())
+}
+
+// Ini contoh tabel untuk Isi Pesan
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  role      String   // 'user' atau 'assistant'
+  content   String
+  createdAt DateTime @default(now())
+}
