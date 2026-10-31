@@ -1,84 +1,85 @@
-generator client {
-  provider = "prisma-client-js"
-}
+-- PostgreSQL schema for NoeX.ai
+-- This file is a standalone SQL script and is valid for PostgreSQL.
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+CREATE TABLE IF NOT EXISTS "User" (
+  "id" TEXT PRIMARY KEY,
+  "name" TEXT,
+  "email" TEXT UNIQUE,
+  "emailVerified" TIMESTAMPTZ,
+  "image" TEXT,
+  "plan" TEXT NOT NULL DEFAULT 'Paket Gratis',
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  plan          String    @default("Paket Gratis")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+CREATE TABLE IF NOT EXISTS "Account" (
+  "id" TEXT PRIMARY KEY,
+  "userId" TEXT NOT NULL,
+  "type" TEXT NOT NULL,
+  "provider" TEXT NOT NULL,
+  "providerAccountId" TEXT NOT NULL,
+  "refresh_token" TEXT,
+  "access_token" TEXT,
+  "expires_at" INTEGER,
+  "token_type" TEXT,
+  "scope" TEXT,
+  "id_token" TEXT,
+  "session_state" TEXT,
+  CONSTRAINT "Account_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE,
+  CONSTRAINT "Account_provider_providerAccountId_key"
+    UNIQUE ("provider", "providerAccountId")
+);
 
-  accounts Account[]
-  sessions Session[]
-  chats    Chat[]
-}
+CREATE TABLE IF NOT EXISTS "Session" (
+  "id" TEXT PRIMARY KEY,
+  "sessionToken" TEXT NOT NULL UNIQUE,
+  "userId" TEXT NOT NULL,
+  "expires" TIMESTAMPTZ NOT NULL,
+  CONSTRAINT "Session_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+CREATE TABLE IF NOT EXISTS "VerificationToken" (
+  "identifier" TEXT NOT NULL,
+  "token" TEXT NOT NULL UNIQUE,
+  "expires" TIMESTAMPTZ NOT NULL,
+  CONSTRAINT "VerificationToken_identifier_token_key"
+    UNIQUE ("identifier", "token")
+);
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+CREATE TABLE IF NOT EXISTS "Chat" (
+  "id" TEXT PRIMARY KEY,
+  "title" TEXT NOT NULL,
+  "group" TEXT NOT NULL DEFAULT 'Hari ini',
+  "pinned" BOOLEAN NOT NULL DEFAULT FALSE,
+  "persona" TEXT NOT NULL DEFAULT 'default',
+  "userId" TEXT NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT "Chat_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
 
-  @@unique([provider, providerAccountId])
-}
+CREATE TABLE IF NOT EXISTS "Message" (
+  "id" TEXT PRIMARY KEY,
+  "role" TEXT NOT NULL,
+  "content" TEXT NOT NULL,
+  "feedback" TEXT,
+  "chatId" TEXT NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT "Message_chatId_fkey"
+    FOREIGN KEY ("chatId") REFERENCES "Chat"("id") ON DELETE CASCADE
+);
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
+CREATE INDEX IF NOT EXISTS "Account_userId_idx"
+  ON "Account" ("userId");
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+CREATE INDEX IF NOT EXISTS "Session_userId_idx"
+  ON "Session" ("userId");
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+CREATE INDEX IF NOT EXISTS "Chat_userId_idx"
+  ON "Chat" ("userId");
 
-  @@unique([identifier, token])
-}
-
-model Chat {
-  id        String    @id @default(cuid())
-  title     String
-  group     String    @default("Hari ini")
-  pinned    Boolean   @default(false)
-  persona   String    @default("default")
-  userId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages Message[]
-}
-
-model Message {
-  id        String   @id @default(cuid())
-  role      String
-  content   String   @db.Text
-  feedback  String?
-  chatId    String
-  createdAt DateTime @default(now())
-
-  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-}
+CREATE INDEX IF NOT EXISTS "Message_chatId_idx"
+  ON "Message" ("chatId");
